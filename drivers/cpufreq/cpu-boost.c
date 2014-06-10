@@ -44,7 +44,7 @@ static struct workqueue_struct *cpu_boost_wq;
 
 static struct work_struct input_boost_work;
 
-static unsigned int boost_ms;
+static unsigned int boost_ms = 50;
 module_param(boost_ms, uint, 0644);
 
 static unsigned int sync_threshold;
@@ -70,8 +70,7 @@ static u64 last_input_time;
  * again each time the CPU comes back up. We can use CPUFREQ_START to figure
  * out a CPU is coming online instead of registering for hotplug notifiers.
  */
-static int boost_adjust_notify(struct notifier_block *nb, unsigned long val,
-				void *data)
+static int boost_adjust_notify(struct notifier_block *nb, unsigned long val, void *data)
 {
 	struct cpufreq_policy *policy = data;
 	unsigned int cpu = policy->cpu;
@@ -141,7 +140,8 @@ static int boost_mig_sync_thread(void *data)
 	unsigned long flags;
 
 	while (1) {
-		wait_event(s->sync_wq, s->pending || kthread_should_stop());
+		wait_event_interruptible(s->sync_wq,
+					s->pending || kthread_should_stop());
 
 		if (kthread_should_stop())
 			break;
